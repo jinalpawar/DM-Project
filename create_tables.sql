@@ -1,6 +1,6 @@
 CREATE TABLE users (
   user_id BIGINT PRIMARY KEY,
-  nickname VARCHAR(100),
+  nickname VARCHAR(150),
   age INT,
   gender VARCHAR(50),
   seeking_gender VARCHAR(50),
@@ -13,8 +13,8 @@ CREATE TABLE users (
   education_level VARCHAR(100),
   income_range VARCHAR(50),
   astrological_sign VARCHAR(50),
-  tested_iq VARCHAR(50),
-  zipcode VARCHAR(20),
+  tested_iq VARCHAR(200),
+  zipcode VARCHAR(200),
   about_me TEXT,
   looking_for TEXT,
   passion TEXT,
@@ -47,7 +47,7 @@ CREATE TABLE user_groups (
 
 CREATE TABLE languages(
   language_id SERIAL PRIMARY KEY,
-  name VARCHAR(100) UNIQUE
+  name VARCHAR(150) UNIQUE
 );
 
 CREATE TABLE user_languages(
