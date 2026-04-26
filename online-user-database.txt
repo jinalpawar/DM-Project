@@ -1,0 +1,388 @@
+Group Number: 16
+
+Group Member details:
+1.1 Name: Jinal Pawar
+1.2 Matricola: 2251926
+
+2.1 Name: Miriam Perez Ballano
+2.2 Matricola: 2244247
+
+--- (1) CREATE TABLE QUERIES
+CREATE TABLE users (
+  user_id BIGINT PRIMARY KEY,
+  nickname VARCHAR(150),
+  age INT,
+  gender VARCHAR(50),
+  seeking_gender VARCHAR(50),
+  marital_status VARCHAR(50),
+  children_want VARCHAR(100),
+  children_have VARCHAR(100),
+  city VARCHAR(100),
+  state_region VARCHAR(100),
+  country VARCHAR(100),
+  education_level VARCHAR(100),
+  income_range VARCHAR(50),
+  astrological_sign VARCHAR(50),
+  tested_iq VARCHAR(200),
+  zipcode VARCHAR(200),
+  about_me TEXT,
+  looking_for TEXT,
+  passion TEXT,
+  address TEXT,
+  latitude DOUBLE PRECISION,
+  longitude DOUBLE PRECISION,
+  tattoos VARCHAR(100),
+  email VARCHAR(255),
+  profile_link TEXT
+);
+
+CREATE TABLE groups (
+  group_id SERIAL PRIMARY KEY,
+  name VARCHAR(255),
+  url TEXT UNIQUE,
+  avatar_url TEXT,
+  description TEXT,
+  group_type VARCHAR(100),
+  members_count INT,
+  join_url TEXT
+);
+
+CREATE TABLE user_groups (
+  user_id BIGINT NOT NULL,
+  group_id INT NOT NULL,
+  PRIMARY KEY (user_id, group_id),
+  FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+  FOREIGN KEY (group_id) REFERENCES groups(group_id) ON DELETE CASCADE
+);
+
+CREATE TABLE languages(
+  language_id SERIAL PRIMARY KEY,
+  name VARCHAR(150) UNIQUE
+);
+
+CREATE TABLE user_languages(
+  user_id BIGINT NOT NULL,
+  language_id INT NOT NULL,
+  PRIMARY KEY (user_id, language_id),
+  FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+  FOREIGN KEY (language_id) REFERENCES languages(language_id) ON DELETE CASCADE
+);
+
+CREATE TABLE interests(
+  interest_id SERIAL PRIMARY KEY,
+  name VARCHAR(150) UNIQUE
+);
+
+CREATE TABLE user_interests(
+  user_id BIGINT NOT NULL,
+  interest_id INT NOT NULL,
+  PRIMARY KEY (user_id, interest_id),
+  FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+  FOREIGN KEY (interest_id) REFERENCES interests(interest_id) ON DELETE CASCADE
+);
+
+CREATE TABLE political_orientations(
+  political_orientation_id SERIAL PRIMARY KEY,
+  name VARCHAR(100) UNIQUE
+);
+
+CREATE TABLE user_political_orientations(
+  user_id BIGINT NOT NULL,
+  political_orientation_id INT NOT NULL,
+  PRIMARY KEY (user_id, political_orientation_id),
+  FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+  FOREIGN KEY  (political_orientation_id) REFERENCES  political_orientations( political_orientation_id) ON DELETE CASCADE
+);
+
+CREATE TABLE vaccination_stances(
+  vaccination_stance_id SERIAL PRIMARY KEY,
+  name VARCHAR(150) UNIQUE
+);
+
+CREATE TABLE user_vaccination_stances(
+  user_id BIGINT NOT NULL,
+  vaccination_stance_id INT NOT NULL,
+  PRIMARY KEY (user_id, vaccination_stance_id),
+  FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+  FOREIGN KEY  (vaccination_stance_id) REFERENCES vaccination_stances(vaccination_stance_id) ON DELETE CASCADE
+);
+
+CREATE TABLE diets(
+  diet_id SERIAL PRIMARY KEY,
+  name VARCHAR(100) UNIQUE
+);
+
+CREATE TABLE user_diets(
+  user_id BIGINT NOT NULL,
+  diet_id INT NOT NULL,
+  PRIMARY KEY (user_id, diet_id),
+  FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+  FOREIGN KEY  (diet_id) REFERENCES diets(diet_id) ON DELETE CASCADE
+);
+
+CREATE TABLE spiritualities(
+  spirituality_id SERIAL PRIMARY KEY,
+  name VARCHAR(100) UNIQUE
+);
+
+CREATE TABLE user_spiritualities(
+  user_id BIGINT NOT NULL,
+  spirituality_id INT NOT NULL,
+  PRIMARY KEY (user_id, spirituality_id),
+  FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+  FOREIGN KEY  (spirituality_id) REFERENCES spiritualities(spirituality_id) ON DELETE CASCADE
+);
+
+--- (2) HW 1: SQL QUERIES
+
+--- (2.1) AVG AGE PER POLITICAL ORIENTATION
+SELECT 
+	po.name as "Political Orientation", 
+	ROUND(AVG(u.age)) AS "Average User Age",
+	COUNT(DISTINCT(upo.user_id)) AS "User Count"
+FROM 
+	users AS u
+	JOIN user_political_orientations AS upo ON 
+		upo.user_id = u.user_id
+	JOIN political_orientations AS po ON 
+		upo.political_orientation_id = po.political_orientation_id
+GROUP BY 
+	po.name
+HAVING 
+	COUNT(DISTINCT(upo.user_id)) > 50
+ORDER BY 
+	"Average User Age"
+
+--- (2.2) MEMBER COUNT PER GROUP
+SELECT 
+	groups.name as "Group Name", 
+	COUNT(DISTINCT(user_groups.user_id)) as "Member Count"
+FROM 
+	user_groups 
+JOIN 
+	"groups" ON 
+	user_groups.group_id = groups.group_id
+GROUP BY 
+	groups.name
+ORDER BY 
+	"Member Count" DESC;
+
+--- (2.3) AVG AGE PER VACCINATION STANCE
+WITH male_users AS (
+		SELECT 
+			ROUND(AVG(u.age)) AS "age",
+			vs.vaccination_stance_id,
+			COUNT(DISTINCT(uvs.user_id)) AS "user_count"
+		FROM
+			users AS u
+		JOIN
+			user_vaccination_stances AS uvs ON
+			uvs.user_id = u.user_id
+		JOIN
+			vaccination_stances AS vs ON
+			vs.vaccination_stance_id = uvs.vaccination_stance_id
+		WHERE
+			u.gender = 'Man'
+		GROUP BY
+			vs.vaccination_stance_id
+), female_users AS (
+		SELECT 
+			ROUND(AVG(u.age)) AS "age",
+			vs.vaccination_stance_id,
+			COUNT(DISTINCT(uvs.user_id)) AS "user_count"
+		FROM
+			users AS u
+		JOIN
+			user_vaccination_stances AS uvs ON
+			uvs.user_id = u.user_id
+		JOIN
+			vaccination_stances AS vs ON
+			vs.vaccination_stance_id = uvs.vaccination_stance_id
+		WHERE
+			u.gender = 'Woman'
+		GROUP BY
+			vs.vaccination_stance_id
+)
+SELECT 
+	vs.name,
+	male_users.age AS "Average Male User Age",
+	male_users.user_count AS "Male User Count",
+	female_users.age AS "Average Female User Age",
+	female_users.user_count AS "Female User Count"
+FROM 
+	vaccination_stances AS vs
+JOIN male_users ON
+	male_users.vaccination_stance_id = vs.vaccination_stance_id
+JOIN female_users ON
+	female_users.vaccination_stance_id = vs.vaccination_stance_id
+	
+--- (2.4) MOST COMMON POLITICAL ORIENTATION PER COUNTRY
+SELECT 
+	u.country as "Country",
+	MODE() WITHIN GROUP (ORDER BY po.name) as "Most Common Political Orientation",
+	COUNT(DISTINCT(upo.user_id)) AS "User Count"
+FROM 
+	user_political_orientations AS upo
+JOIN 
+	political_orientations AS po ON 
+	upo.political_orientation_id = po.political_orientation_id
+JOIN 
+	users AS u ON 
+	upo.user_id = u.user_id
+GROUP BY 
+	"Country"
+ORDER BY 
+	"User Count" DESC;
+
+--- (2.5) MOST COMMON VACCINATION STANCE PER COUNTRY
+SELECT 
+	u.country as "Country",
+	MODE() WITHIN GROUP (ORDER BY vs.name) as "Most Common Stance on Vaccination", 
+	COUNT(DISTINCT(uvs.user_id)) AS "User Count"
+FROM 
+	user_vaccination_stances AS uvs
+JOIN 
+	vaccination_stances AS vs ON 
+	uvs.vaccination_stance_id = vs.vaccination_stance_id
+JOIN 
+	users AS u ON 
+	uvs.user_id = u.user_id
+GROUP BY 
+	"Country"
+ORDER BY 
+	"User Count" DESC;
+
+
+--- (2.6) INTERESTS SHARED BY USERS FROM MINIMUM 5 COUNTRIES
+SELECT 
+	i.name as interest, 
+	COUNT(DISTINCT u.country) AS num_countries
+	FROM user_interests ui
+	JOIN interests i on ui.interest_id=i.interest_id
+	JOIN users u ON ui.user_id = u.user_id
+	WHERE u.country IS NOT NULL
+	GROUP BY i.name
+	HAVING COUNT(DISTINCT u.country) >= 5
+	ORDER BY num_countries DESC;
+
+--- (2.7) MOST COMMON INTERESTS
+SELECT 
+	i.name AS interest, COUNT(*) AS user_count
+	FROM user_interests ui
+	JOIN interests i ON ui.interest_id = i.interest_id
+	GROUP BY i.name
+	ORDER BY user_count DESC;
+
+
+--- (2.8) TOP 10 COUNTRIES WITH HIGHEST USER COUNT
+SELECT 
+	g.name AS group_name, COUNT(ug.user_id) AS num_users
+	FROM groups g
+	JOIN user_groups ug ON g.group_id = ug.group_id
+	GROUP BY g.group_id, g.name
+	ORDER BY num_users DESC
+	LIMIT 10;
+
+--- (2.9) USERS WHO DO NOT BELONG TO ANY GROUP
+SELECT 
+	u.user_id, u.nickname, u.country
+	FROM users u
+	WHERE NOT EXISTS (
+	    SELECT 1
+	    FROM user_groups ug
+	    WHERE ug.user_id = u.user_id
+	);
+
+
+--- (2.10) USERS WITH HIGHER GROUP COUNT THAN AVG
+SELECT 
+	u.user_id, u.nickname, COUNT(ug.group_id) AS num_groups
+	FROM users u
+	JOIN user_groups ug ON u.user_id = ug.user_id
+	GROUP BY u.user_id, u.nickname
+	HAVING COUNT(ug.group_id) > (
+	    SELECT AVG(group_count)
+	    FROM (
+	        SELECT COUNT(*) AS group_count
+	        FROM user_groups
+	        GROUP BY user_id
+	    ) sub
+	)
+	ORDER BY num_groups DESC;
+
+
+--- (3) HW 2: OPTIMIZED QUERIES
+
+--- (3.1) AVG AGE PER POLITICAL ORIENTATION
+---Create Index on User Political Orientations for better performance
+CREATE INDEX idx_user_po_user_id ON user_political_orientations(user_id);
+
+SELECT 
+	po.name as "Political Orientation", 
+	ROUND(AVG(u.age)) AS "Average User Age",
+	COUNT(DISTINCT(upo.user_id)) AS "User Count"
+FROM 
+	users AS u
+	JOIN user_political_orientations AS upo ON 
+		upo.user_id = u.user_id
+	JOIN political_orientations AS po ON 
+		upo.political_orientation_id = po.political_orientation_id
+GROUP BY 
+	po.name
+HAVING 
+	COUNT(DISTINCT(upo.user_id)) > 50
+ORDER BY 
+	"Average User Age"
+
+--- (3.2) MEMBER COUNT PER GROUP
+---Create index to improve joins and grouping
+CREATE INDEX IF NOT EXISTS idx_user_groups_user_id ON user_groups(user_id);
+
+SELECT 
+	groups.name as "Group Name", 
+	COUNT(DISTINCT(user_groups.user_id)) as "Member Count"
+FROM 
+	user_groups 
+JOIN 
+	"groups" ON 
+	user_groups.group_id = groups.group_id
+GROUP BY 
+	groups.name
+ORDER BY 
+	"Member Count" DESC;
+
+--- (3.3) INTERESTS SHARED BY USERS BY MINIMUM 5 COUNTRIES
+---Index for grouping and joining with interests:
+CREATE INDEX idx_user_interests_interest_id ON user_interests (interest_id);
+
+--- Index for joining with users
+CREATE INDEX idx_user_interests_user_id ON user_interests(user_id);
+
+---Index for filtering and distinct country counting
+CREATE INDEX idx_users_country ON users(country);
+
+---Optimized query:
+SELECT 
+	i.name AS interests, 
+	COUNT(DISTINCT u.country) AS num_countries
+	FROM user_interests ui 
+	JOIN interests i ON ui.interest_id = i.interest_id
+	JOIN users u ON ui.user_id = u.user_id
+	WHERE u.country IS NOT NULL
+	GROUP BY i.name
+	HAVING COUNT (DISTINCT u.country) >= 5
+	ORDER BY num_countries DESC;
+
+--- (3.4) USERS WITH HIGHER GROUP COUNT THAN AVERAGE
+---Create index to improve joins and grouping
+CREATE INDEX idx_user_groups_user_id ON user_groups(user_id);
+
+---Optimized query
+SELECT u.user_id, u.nickname, COUNT(ug.group_id) AS num_groups
+FROM users u
+JOIN user_groups ug ON u.user_id = ug.user_id
+GROUP BY u.user_id, u.nickname
+HAVING COUNT (ug.group_id) > (SELECT AVG(group_count)
+	FROM(SELECT COUNT(*) AS group_count FROM user_groups
+	GROUP BY user_id) sub)
+ORDER BY num_groups DESC; 
