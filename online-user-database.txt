@@ -136,6 +136,9 @@ CREATE TABLE user_spiritualities(
 --- (2) HW 1: SQL QUERIES
 
 --- (2.1) AVG AGE PER POLITICAL ORIENTATION
+/*This query computes the average age of users for each political orientation.
+It joins the users table with the bridge table user_political_orientations and 
+then with political_orientations to retrieve the category name. The HAVING clause keeps only political orientations with more than 50 users, so the results are based on categories with enough data.*/
 SELECT 
 	po.name as "Political Orientation", 
 	ROUND(AVG(u.age)) AS "Average User Age",
@@ -151,9 +154,13 @@ GROUP BY
 HAVING 
 	COUNT(DISTINCT(upo.user_id)) > 50
 ORDER BY 
-	"Average User Age"
+	"Average User Age";
 
 --- (2.2) MEMBER COUNT PER GROUP
+/*It counts how many distinct users belong to each group. It joins user_groups
+with groups in order to retrieve the group names. The result is grouped by group name and ordered from 
+the largest group to the smallest one
+*/
 SELECT 
 	groups.name as "Group Name", 
 	COUNT(DISTINCT(user_groups.user_id)) as "Member Count"
@@ -168,6 +175,8 @@ ORDER BY
 	"Member Count" DESC;
 
 --- (2.3) AVG AGE PER VACCINATION STANCE
+/*This third query compared vaccination stances by gender. For each vaccination stnace, it calculates the average age and number of male and female users. The query uses CTEs to separetely compute male and female aggregates
+and then joins them with vaccination_stances to show the final result*/
 WITH male_users AS (
 		SELECT 
 			ROUND(AVG(u.age)) AS "age",
@@ -214,9 +223,11 @@ FROM
 JOIN male_users ON
 	male_users.vaccination_stance_id = vs.vaccination_stance_id
 JOIN female_users ON
-	female_users.vaccination_stance_id = vs.vaccination_stance_id
+	female_users.vaccination_stance_id = vs.vaccination_stance_id;
 	
 --- (2.4) MOST COMMON POLITICAL ORIENTATION PER COUNTRY
+/*This query finds the most common political orientation for each country. It joins
+users with user_political_orientations and political_orientations. The function MODE() is used to return the most frequent political orientation within each country. Finally, the result is ordered by the number of users per country.*/
 SELECT 
 	u.country as "Country",
 	MODE() WITHIN GROUP (ORDER BY po.name) as "Most Common Political Orientation",
@@ -235,6 +246,8 @@ ORDER BY
 	"User Count" DESC;
 
 --- (2.5) MOST COMMON VACCINATION STANCE PER COUNTRY
+/*This query finds the most common vaccination stance for each country. It joins users with user_vaccination_stances and 
+vaccination_stances. We use again the MODE() function which returns the most frequent vaccination stance within each country. The result will be ordered in descending order*/
 SELECT 
 	u.country as "Country",
 	MODE() WITHIN GROUP (ORDER BY vs.name) as "Most Common Stance on Vaccination", 
@@ -254,6 +267,7 @@ ORDER BY
 
 
 --- (2.6) INTERESTS SHARED BY USERS FROM MINIMUM 5 COUNTRIES
+/*This query finds interest that appear among users from at least five different countries. It will join user_interests with interests to get the interest names and joins users to accessthe country of each user. COUNT(DISTINCT u.country) counts how many different countries are associated with each interest. The HAVING clause keeps only interests appeating in 5 or more countries*/
 SELECT 
 	i.name as interest, 
 	COUNT(DISTINCT u.country) AS num_countries
@@ -266,6 +280,7 @@ SELECT
 	ORDER BY num_countries DESC;
 
 --- (2.7) MOST COMMON INTERESTS
+/*This 7th query finds the most common interests overall. It joins user_interest with interests to get the interest names.Then it will group by interest and counts how many time each interest appears. The final result is ordered from the most frequen interest to the least frequent*/
 SELECT 
 	i.name AS interest, COUNT(*) AS user_count
 	FROM user_interests ui
@@ -274,7 +289,8 @@ SELECT
 	ORDER BY user_count DESC;
 
 
---- (2.8) TOP 10 COUNTRIES WITH HIGHEST USER COUNT
+--- (2.8) TOP 10 GROUPS WITH HIGHEST USER COUNT
+/*This query returns the top 10 groups with the highest number of users. It joind groups with users_groups to count how many users belong to each group. The GROUP BY clause groups the results by group and LIMIT 10 keeps the only top 10 groups with the largest user count*/
 SELECT 
 	g.name AS group_name, COUNT(ug.user_id) AS num_users
 	FROM groups g
@@ -284,6 +300,7 @@ SELECT
 	LIMIT 10;
 
 --- (2.9) USERS WHO DO NOT BELONG TO ANY GROUP
+/*This query finds users who do not belong to any group. It uses NOT EXISTS to chech if there is a matching row in user_groups for each user. In the subquery SELECT 1 is used because EXISTS only checks whetther a row exists (we do not necessary need the value returned)*/
 SELECT 
 	u.user_id, u.nickname, u.country
 	FROM users u
@@ -295,6 +312,7 @@ SELECT
 
 
 --- (2.10) USERS WITH HIGHER GROUP COUNT THAN AVG
+/*This query finds the users who belong to more groups than the average user. Fisrt it counts the number of groups for each user. Then the subqyery computes the average number of groups per user. The HAVING vlause compares each user's group count with that average and keeps only users above the average*/
 SELECT 
 	u.user_id, u.nickname, COUNT(ug.group_id) AS num_groups
 	FROM users u
@@ -313,7 +331,8 @@ SELECT
 
 --- (3) HW 2: OPTIMIZED QUERIES
 
---- (3.1) AVG AGE PER POLITICAL ORIENTATION
+--- (3.1) AVG AGE PER POLITICAL ORIENTATION (UN-OPTIMIZED VERSION: 2.1)
+/*This query joins users with user_political_orientations using user_id. We create and index on user_political orientations(user_id) to improve the join between users and the bridge table. This can reduce the cost of matching each user with their political orientation especially on larger datasets.*/
 ---Create Index on User Political Orientations for better performance
 CREATE INDEX idx_user_po_user_id ON user_political_orientations(user_id);
 
@@ -332,9 +351,10 @@ GROUP BY
 HAVING 
 	COUNT(DISTINCT(upo.user_id)) > 50
 ORDER BY 
-	"Average User Age"
+	"Average User Age";
 
---- (3.2) MEMBER COUNT PER GROUP
+--- (3.2) MEMBER COUNT PER GROUP (UN-OPTIMIZED VERSION: 2.2)
+/*This qeury counts group membership using the user_groups bridge table. We create an index on user_groups(user_id) because this column is used to identify users in the relationship table. The index can improve lookup and aggregation performance when counting group members*/
 ---Create index to improve joins and grouping
 CREATE INDEX IF NOT EXISTS idx_user_groups_user_id ON user_groups(user_id);
 
@@ -351,7 +371,8 @@ GROUP BY
 ORDER BY 
 	"Member Count" DESC;
 
---- (3.3) INTERESTS SHARED BY USERS BY MINIMUM 5 COUNTRIES
+--- (3.3) INTERESTS SHARED BY USERS BY MINIMUM 5 COUNTRIES (UN-OPTIMIZED VERSION: 2.6)
+/*This query joins three tables: user_interests, interests and users. The following created indexes support the joins, the grouping by interest and the COUNT(DISTINCT country operation). This optimization is especially useful if the dataset grows*/
 ---Index for grouping and joining with interests:
 CREATE INDEX idx_user_interests_interest_id ON user_interests (interest_id);
 
@@ -373,7 +394,8 @@ SELECT
 	HAVING COUNT (DISTINCT u.country) >= 5
 	ORDER BY num_countries DESC;
 
---- (3.4) USERS WITH HIGHER GROUP COUNT THAN AVERAGE
+--- (3.4) USERS WITH HIGHER GROUP COUNT THAN AVERAGE (UN-OPTIMIZED VERSION: 2.10)
+/*This query uses the table user_groups in both the main query and the subquery. It joins users with user_groups and groups user_groups by user_id to calculate the average number of groups per user. The created index is useful because this column is central to the join and the aggregation*/
 ---Create index to improve joins and grouping
 CREATE INDEX idx_user_groups_user_id ON user_groups(user_id);
 
