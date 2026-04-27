@@ -175,7 +175,7 @@ ORDER BY
 	"Member Count" DESC;
 
 --- (2.3) AVG AGE PER VACCINATION STANCE
-/*This third query compared vaccination stances by gender. For each vaccination stnace, it calculates the average age and number of male and female users. The query uses CTEs to separetely compute male and female aggregates
+/*This third query compared vaccination stances by gender. For each vaccination stance, it calculates the average age and number of male and female users. The query uses CTEs to separetely compute male and female aggregates
 and then joins them with vaccination_stances to show the final result*/
 WITH male_users AS (
 		SELECT 
@@ -267,7 +267,7 @@ ORDER BY
 
 
 --- (2.6) INTERESTS SHARED BY USERS FROM MINIMUM 5 COUNTRIES
-/*This query finds interest that appear among users from at least five different countries. It will join user_interests with interests to get the interest names and joins users to accessthe country of each user. COUNT(DISTINCT u.country) counts how many different countries are associated with each interest. The HAVING clause keeps only interests appeating in 5 or more countries*/
+/*This query finds interest that appear among users from at least five different countries. It will join user_interests with interests to get the interest names and joins users to accessthe country of each user. COUNT(DISTINCT u.country) counts how many different countries are associated with each interest. The HAVING clause keeps only interests appearing in 5 or more countries*/
 SELECT 
 	i.name as interest, 
 	COUNT(DISTINCT u.country) AS num_countries
@@ -280,7 +280,7 @@ SELECT
 	ORDER BY num_countries DESC;
 
 --- (2.7) MOST COMMON INTERESTS
-/*This 7th query finds the most common interests overall. It joins user_interest with interests to get the interest names.Then it will group by interest and counts how many time each interest appears. The final result is ordered from the most frequen interest to the least frequent*/
+/*This 7th query finds the most common interests overall. It joins user_interest with interests to get the interest names. Then it will group by interest and counts how many time each interest appears. The final result is ordered from the most frequen interest to the least frequent*/
 SELECT 
 	i.name AS interest, COUNT(*) AS user_count
 	FROM user_interests ui
@@ -290,7 +290,7 @@ SELECT
 
 
 --- (2.8) TOP 10 GROUPS WITH HIGHEST USER COUNT
-/*This query returns the top 10 groups with the highest number of users. It joind groups with users_groups to count how many users belong to each group. The GROUP BY clause groups the results by group and LIMIT 10 keeps the only top 10 groups with the largest user count*/
+/*This query returns the top 10 groups with the highest number of users. It joins groups with users_groups to count how many users belong to each group. The GROUP BY clause groups the results by group and LIMIT 10 keeps the only top 10 groups with the largest user count*/
 SELECT 
 	g.name AS group_name, COUNT(ug.user_id) AS num_users
 	FROM groups g
@@ -300,7 +300,7 @@ SELECT
 	LIMIT 10;
 
 --- (2.9) USERS WHO DO NOT BELONG TO ANY GROUP
-/*This query finds users who do not belong to any group. It uses NOT EXISTS to chech if there is a matching row in user_groups for each user. In the subquery SELECT 1 is used because EXISTS only checks whetther a row exists (we do not necessary need the value returned)*/
+/*This query finds users who do not belong to any group. It uses NOT EXISTS to check if there is a matching row in user_groups for each user. In the subquery SELECT 1 is used because EXISTS only checks whether a row exists (we do not necessarily need the value returned)*/
 SELECT 
 	u.user_id, u.nickname, u.country
 	FROM users u
@@ -312,7 +312,7 @@ SELECT
 
 
 --- (2.10) USERS WITH HIGHER GROUP COUNT THAN AVG
-/*This query finds the users who belong to more groups than the average user. Fisrt it counts the number of groups for each user. Then the subqyery computes the average number of groups per user. The HAVING vlause compares each user's group count with that average and keeps only users above the average*/
+/*This query finds the users who belong to more groups than the average user. First it counts the number of groups for each user. Then the subquery computes the average number of groups per user. The HAVING clause compares each user's group count with that average and keeps only users above the average*/
 SELECT 
 	u.user_id, u.nickname, COUNT(ug.group_id) AS num_groups
 	FROM users u
