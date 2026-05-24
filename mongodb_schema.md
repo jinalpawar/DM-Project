@@ -30,14 +30,14 @@ Many-to-many relationships were represented using bridge tables such as:
 
 In MongoDB we use a denormalized structure centered on the user document.
 
-This is appropriate because most relationships in the dataset are user-centered.Therefore, attributes such as interests, languages, groups, political orientations and vaccination stances are embedded directly inside each user document.
+This is appropriate because most relationships in the dataset are user-centered. Therefore, attributes such as interests, languages, groups, political orientations and vaccination stances are embedded directly inside each user document.
 
 ## User document structure
 
 ```json
 {
     "user_id":11780,
-    "nick_name": "Mortarion",
+    "nickname": "Mortarion",
     "age":"26",
     "gender":"Man",
     "seeking_gender":"Woman",
@@ -55,3 +55,12 @@ This is appropriate because most relationships in the dataset are user-centered.
 
 }
 ``` 
+## Indexes created
+
+The insertion script creates the following indexes: 
+
+```javascript
+db.users.createIndex({ user_id: 1 }, { unique: true })
+db.users.createIndex({ country: 1 })
+db.users.createIndex({ interests: 1 })
+db.users.createIndex({ "groups.name": 1 })
