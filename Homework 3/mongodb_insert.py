@@ -2,8 +2,9 @@
 #In MongoDB, we use a denormalized document model where user-related data is embedded inside each user document.
 import json 
 from pymongo import MongoClient
+from datetime import datetime
 
-JSON_FILE_PATH = "Data/merged_details.json"
+JSON_FILE_PATH = "../Data/merged_details.json"
 MONGO_URI = "mongodb://localhost:27017/"
 DB_NAME = "dm_project_mongodb"
 COLLECTION_NAME = "users"
@@ -64,10 +65,19 @@ def transform_user(user):
     if user_id is None:
         return None
     
+    age = clean_value(accordion.get("Age"))
+
+    if isinstance(age, str) and len(age) > 4:
+        age = int((datetime.now() - datetime.strptime(age, "%Y-%m-%d %H:%M:%S")).days/365)
+    elif isinstance(age, str) and age:
+        age = abs(int(age))
+    else:
+        age = None
+    
     document = {
         "user_id": int(user_id),
         "nickname": clean_value(user.get("profileData", {}).get("nickname")),
-        "age": clean_value(accordion.get("Age")),
+        "age": age,
         "gender": clean_value(accordion.get("I am a")),
         "seeking_gender": clean_value(accordion.get("Seeking a")),
         "marital_status":clean_value(accordion.get("Marital status")),

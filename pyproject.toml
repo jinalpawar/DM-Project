@@ -10,4 +10,5 @@ dependencies = [
     "pandas>=3.0.2",
     "psycopg>=3.3.3",
     "psycopg-binary>=3.3.3",
+    "pymongo>=4.17.0",
 ]
