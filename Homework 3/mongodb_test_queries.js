@@ -1,4 +1,4 @@
-// (2.1) AVG AGE PER POLITICAL ORIENTATION
+// (3.1) AVG AGE PER POLITICAL ORIENTATION
 db.users.aggregate(
     [
         { $unwind: "$political_orientations" },
@@ -12,7 +12,7 @@ db.users.aggregate(
     ]
 )
 
-// (2.2) MEMBER COUNT PER GROUP
+// (3.2) MEMBER COUNT PER GROUP
 db.users.aggregate(
     [
         { $unwind: "$groups" },
@@ -26,7 +26,7 @@ db.users.aggregate(
     ]
 )
 
-// (2.3) AVG AGE & MEMBER COUNT PER VACCINATION STANCE PER GENDER
+// (3.3) AVG AGE & MEMBER COUNT PER VACCINATION STANCE PER GENDER
 db.users.aggregate(
     [
         { $unwind: "$vaccination_stances" },
@@ -41,7 +41,7 @@ db.users.aggregate(
 
     ]
 )
-// (2.4) MOST COMMON POLITICAL ORIENTATION PER COUNTRY add $project
+// (3.4) MOST COMMON POLITICAL ORIENTATION PER COUNTRY
 db.users.aggregate(
     [
         { $unwind: "$political_orientations" },
@@ -59,11 +59,12 @@ db.users.aggregate(
                 member_count: { $first: "$member_count" }
             }
         },
-        { $sort: { member_count: -1 } }
+        { $sort: { member_count: -1 } },
+        { $project: { _id: 0, country: "$_id", political_orientation: 1, member_count: 1 } }
 
     ]
 )
-// (2.5) MOST COMMON VACCINATION STANCE PER COUNTRY add $project
+// (3.5) MOST COMMON VACCINATION STANCE PER COUNTRY
 db.users.aggregate(
     [
         { $unwind: "$vaccination_stances" },
@@ -77,15 +78,16 @@ db.users.aggregate(
         {
             $group: {
                 _id: "$_id.country",
-                political_orientation: { $first: "$_id.vaccination_stance" },
+                vaccination_stance: { $first: "$_id.vaccination_stance" },
                 member_count: { $first: "$member_count" }
             }
         },
-        { $sort: { member_count: -1 } }
+        { $sort: { member_count: -1 } },
+        { $project: { _id: 0, country: "$_id", vaccination_stance: 1, member_count: 1 } }
 
     ]
 )
-// (2.6) INTERESTS SHARED BY USERS FROM MINIMUM 5 COUNTRIES
+// (3.6) INTERESTS SHARED BY USERS FROM MINIMUM 5 COUNTRIES
 db.users.aggregate(
     [
         { $unwind: "$interests" },
@@ -101,7 +103,7 @@ db.users.aggregate(
 
     ]
 )
-// (2.7) MOST COMMON INTERESTS
+// (3.7) MOST COMMON INTERESTS
 db.users.aggregate(
     [
         { $unwind: "$interests" },
@@ -117,7 +119,7 @@ db.users.aggregate(
     ]
 )
 
-// (2.8) TOP 10 GROUPS WITH HIGHEST USER COUNT
+// (3.8) TOP 10 GROUPS WITH HIGHEST USER COUNT
 db.users.aggregate(
     [
         { $unwind: "$groups" },
@@ -127,14 +129,15 @@ db.users.aggregate(
                 member_count: { $count: {} }
             }
         },
-        { $sort: { member_count: -1 } }
+        { $sort: { member_count: -1 } },
+        { $limit: 10}
     ]
 )
 
-// (2.9) USERS WHO DO NOT BELONG TO ANY GROUP
+// (3.9) USERS WHO DO NOT BELONG TO ANY GROUP
 db.users.find({ groups: [] }, { _id: 1, nickname: 1, country: 1 })
 
-// (2.10) USERS WITH HIGHER GROUP COUNT THAN AVG
+// (3.10) USERS WITH HIGHER GROUP COUNT THAN AVG
 var avg = db.users.aggregate(
     [
         { $project: { group_count: { $size: "$groups" } } },
