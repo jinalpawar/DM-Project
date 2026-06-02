@@ -26,7 +26,7 @@ db.users.aggregate(
     ]
 )
 
-// (3.3) AVG AGE & MEMBER COUNT PER VACCINATION STANCE PER GENDER
+// (3.3) AVG AGE & USER COUNT PER VACCINATION STANCE PER GENDER
 db.users.aggregate(
     [
         { $unwind: "$vaccination_stances" },

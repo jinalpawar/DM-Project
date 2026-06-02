@@ -1,0 +1,312 @@
+Group Number: 16
+
+Group Member details:
+1.1 Name: Jinal Pawar
+1.2 Matricola: 2251926
+
+2.1 Name: Miriam Perez Ballano
+2.2 Matricola: 2244247
+
+--- (1) Python Script to clean data and populate MongoDB collection, create Indexes
+
+#In PostgreSQL, the data was normalized into multiple tables and bridge tables.
+#In MongoDB, we use a denormalized document model where user-related data is embedded inside each user document.
+
+import json 
+from pymongo import MongoClient
+from datetime import datetime
+
+JSON_FILE_PATH = "../Data/merged_details.json"
+MONGO_URI = "mongodb://localhost:27017/"
+DB_NAME = "dm_project_mongodb"
+COLLECTION_NAME = "users"
+
+def clean_value(value):
+    """Convert empty strings and invalid values into None"""
+    if value is None:
+        return None
+    if isinstance(value,str):
+        value=value.strip()
+        if value == "" or value == "a:0:{}":
+            return None
+    return value
+
+def split_multi_value(value):
+    """
+    Split comma-separated values into a clean list. Example:
+    'English, German' -> ['English', 'German']"""
+
+    value=clean_value(value)
+    if not isinstance(value,str):
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+def get_accordion(user):
+    """Get accordionData from profileData safely"""
+    profile_data=user.get("profileData", {})
+    return profile_data.get("accordionData",{}) or {}
+
+def get_position(user):
+    """Extract latitude and longitude safely"""
+    position=user.get("position")
+
+    if isinstance(position,dict):
+        return {
+            "latitude":position.get("latitude"),
+            "longitude":position.get("longitude")
+        }
+    return {
+        "latitude":None,
+        "longitude":None
+    }
+
+def transform_group(group):
+    return {
+        "name": clean_value(group.get("name")),
+        "url": clean_value(group.get("url")),
+        "description": clean_value(group.get("description")),
+        "type": clean_value(group.get("type"))
+    }
+
+def transform_user(user):
+    """Transform original JSON user into MongoDB user document"""
+    accordion = get_accordion(user)
+    position = get_position(user)
+
+    user_id=user.get("id")
+    if user_id is None:
+        return None
+    
+    age = clean_value(accordion.get("Age"))
+
+    if isinstance(age, str) and len(age) > 4:
+        age = int((datetime.now() - datetime.strptime(age, "%Y-%m-%d %H:%M:%S")).days/365)
+    elif isinstance(age, str) and age:
+        age = abs(int(age))
+    else:
+        age = None
+    
+    document = {
+        "user_id": int(user_id),
+        "nickname": clean_value(user.get("profileData", {}).get("nickname")),
+        "age": age,
+        "gender": clean_value(accordion.get("I am a")),
+        "seeking_gender": clean_value(accordion.get("Seeking a")),
+        "marital_status":clean_value(accordion.get("Marital status")),
+        "children_want":clean_value(accordion.get("Children (want)")),
+        "children_have":clean_value(accordion.get("Children (have)")),
+        "city":clean_value(accordion.get("City")),
+        "state_region":clean_value(accordion.get("State/Region")),
+        "country":clean_value(accordion.get("Country")),
+        "education_level":clean_value(accordion.get("Education Level")),
+        "income_range":clean_value(accordion.get("Income")),
+        "astrological_sign":clean_value(accordion.get("Astrological Sign")),
+        "tested_iq":clean_value(accordion.get("Tested IQ")),
+        "zipcode":clean_value(accordion.get("Zipcode")),
+        "about_me":clean_value(accordion.get("About me (Minimum 50 Characters, Maximum 500 Characters)")),
+        "looking_for":clean_value(accordion.get("Looking for")),
+        "passion":clean_value(accordion.get("The one thing I am most passionate about:")),
+        "address":clean_value(user.get("address")),
+        "location":position,
+        "tattoos":clean_value(accordion.get("Tattoos")),
+        "email":clean_value(user.get("email")),
+        "profile_link":clean_value(user.get("link")),
+
+        "languages":split_multi_value(accordion.get("Language")),
+        "interests":split_multi_value(accordion.get("Interests")),
+        "political_orientations":split_multi_value(accordion.get("Political Orientation")),
+        "vaccination_stances":split_multi_value(accordion.get("Stance on Vaccination")),
+        "diets":split_multi_value(accordion.get("Diet")),
+        "spiritualities":split_multi_value(accordion.get("Spirituality")),
+
+        "groups":[ transform_group(group) for group in user.get("groupData",[]) if isinstance(group,dict)]
+
+    }
+    return document
+
+def main():
+    client=MongoClient(MONGO_URI)
+    db=client[DB_NAME]
+    users_collection=db[COLLECTION_NAME]
+
+    with open(JSON_FILE_PATH,"r", encoding="utf-8") as file:
+        data=json.load(file)
+    raw_users=data["users"]
+
+    documents=[]
+    for user in raw_users:
+        document = transform_user(user)
+        if document is not None:
+            documents.append(document)
+    users_collection.delete_many({})
+
+    if documents:
+        users_collection.insert_many(documents)
+    users_collection.create_index("user_id", unique=True)
+    users_collection.create_index("country")
+    users_collection.create_index("interests")
+    users_collection.create_index("groups.name")
+
+    print("Inserted documents:", users_collection.count_documents({}))
+    print("Database:", DB_NAME)
+    print("Collection:", COLLECTION_NAME)
+
+
+if __name__ == "__main__":
+    main()
+    
+
+--- (2) Queries for Homework 3 (Same goals as Homeworks 1 & 2)
+// (3.1) AVG AGE PER POLITICAL ORIENTATION
+db.users.aggregate(
+    [
+        { $unwind: "$political_orientations" },
+        {
+            $group: {
+                _id: "$political_orientations",
+                avg_age: { $avg: "$age" }
+            }
+        },
+        { $project: { _id: 0, political_orientations: "$_id", avg_age: { $floor: "$avg_age" } } }
+    ]
+)
+
+// (3.2) MEMBER COUNT PER GROUP
+db.users.aggregate(
+    [
+        { $unwind: "$groups" },
+        {
+            $group: {
+                _id: "$groups.name",
+                member_count: { $count: {} }
+            }
+        },
+        { $sort: { member_count: -1 } }
+    ]
+)
+
+// (3.3) AVG AGE & USER COUNT PER VACCINATION STANCE PER GENDER
+db.users.aggregate(
+    [
+        { $unwind: "$vaccination_stances" },
+        {
+            $group: {
+                _id: ["$vaccination_stances", "$gender"],
+                avg_age: { $avg: "$age" },
+                member_count: { $count: {} }
+            }
+        },
+        { $project: { _id: 0, vaccination_stance: { "$arrayElemAt": ["$_id", 0] }, gender: { "$arrayElemAt": ["$_id", 1] }, avg_age: { $floor: "$avg_age" }, member_count: 1 } }
+
+    ]
+)
+// (3.4) MOST COMMON POLITICAL ORIENTATION PER COUNTRY
+db.users.aggregate(
+    [
+        { $unwind: "$political_orientations" },
+        {
+            $group: {
+                _id: { country: "$country", political_orientation: "$political_orientations" },
+                member_count: { $count: {} }
+            }
+        },
+        { $sort: { member_count: -1 } },
+        {
+            $group: {
+                _id: "$_id.country",
+                political_orientation: { $first: "$_id.political_orientation" },
+                member_count: { $first: "$member_count" }
+            }
+        },
+        { $sort: { member_count: -1 } },
+        { $project: { _id: 0, country: "$_id", political_orientation: 1, member_count: 1 } }
+
+    ]
+)
+// (3.5) MOST COMMON VACCINATION STANCE PER COUNTRY
+db.users.aggregate(
+    [
+        { $unwind: "$vaccination_stances" },
+        {
+            $group: {
+                _id: { country: "$country", vaccination_stance: "$vaccination_stances" },
+                member_count: { $count: {} }
+            }
+        },
+        { $sort: { member_count: -1 } },
+        {
+            $group: {
+                _id: "$_id.country",
+                vaccination_stance: { $first: "$_id.vaccination_stance" },
+                member_count: { $first: "$member_count" }
+            }
+        },
+        { $sort: { member_count: -1 } },
+        { $project: { _id: 0, country: "$_id", vaccination_stance: 1, member_count: 1 } }
+
+    ]
+)
+// (3.6) INTERESTS SHARED BY USERS FROM MINIMUM 5 COUNTRIES
+db.users.aggregate(
+    [
+        { $unwind: "$interests" },
+        {
+            $group: {
+                _id: "$interests",
+                country: { $addToSet: "$country" }
+            }
+        },
+        { $project: { _id: 0, interest: "$_id", num_countries: { $size: "$country" } } },
+        { $match: { num_countries: { $gte: 5 } } },
+        { $sort: { num_countries: -1 } }
+
+    ]
+)
+// (3.7) MOST COMMON INTERESTS
+db.users.aggregate(
+    [
+        { $unwind: "$interests" },
+        {
+            $group: {
+                _id: "$interests",
+                user_count: { $count: {} }
+            }
+        },
+        { $project: { _id: 0, interest: "$_id", user_count: "$user_count" } },
+        { $sort: { user_count: -1 } }
+
+    ]
+)
+
+// (3.8) TOP 10 GROUPS WITH HIGHEST USER COUNT
+db.users.aggregate(
+    [
+        { $unwind: "$groups" },
+        {
+            $group: {
+                _id: "$groups.name",
+                member_count: { $count: {} }
+            }
+        },
+        { $sort: { member_count: -1 } },
+        { $limit: 10}
+    ]
+)
+
+// (3.9) USERS WHO DO NOT BELONG TO ANY GROUP
+db.users.find({ groups: [] }, { _id: 1, nickname: 1, country: 1 })
+
+// (3.10) USERS WITH HIGHER GROUP COUNT THAN AVG
+var avg = db.users.aggregate(
+    [
+        { $project: { group_count: { $size: "$groups" } } },
+        { $group: { _id: null, average: { $avg: "$group_count" } } }
+    ]).toArray()[0].average
+
+db.users.aggregate(
+    [
+        { $project: { _id: 1, nickname: 1, country: 1, group_count: { $size: "$groups" } } },
+        { $match: { group_count: { $gt: avg } } },
+        { $sort: { group_count: -1 } }
+    ]
+)
